@@ -1,5 +1,5 @@
 PAGE_STRINGS = ['yourPolicy', 'defaultPolicy', 'subscriptions', 'type',
-  'origin', 'destination', 'allow', 'block', 'temporary', 'addRule',
+  'origin', 'destination', 'allow', 'block', 'temporary', 'redirect', 'addRule',
   'learnMoreAboutRules', 'removeOldRules'];
 
 $(function () {
@@ -51,6 +51,17 @@ function populateRuleTable(filter) {
     }
     addPolicyTableRow(table, 'deny', origin, dest, entry);
   }
+  for (var i = 0; i < entries['redirect'].length; i++) {
+    var entry = entries['redirect'][i];
+    var origin = entry['o'] ? ruleDataPartToDisplayString(entry['o']) : '';
+    var dest = entry['d'] ? ruleDataPartToDisplayString(entry['d']) : '';
+    if (filter) {
+      if (origin.indexOf(filter) == -1 && dest.indexOf(filter) == -1) {
+        continue;
+      }
+    }
+    addPolicyTableRow(table, 'redirect', origin, dest, entry);
+  }
 }
 
 function deleteRule(event) {
@@ -79,7 +90,7 @@ function addPolicyTableRow(table, type, origin, dest, ruleData) {
   var row = table.insertRow(rowCount);
 
   var typeCell = row.insertCell(0);
-  typeCell.textContent = type == 'allow' ? 'Allow' : 'Block';
+  typeCell.textContent = type;
 
   var originCell = row.insertCell(1);
   originCell.textContent = origin;

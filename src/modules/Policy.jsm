@@ -21,7 +21,7 @@
  */
 
 var EXPORTED_SYMBOLS = ["Policy", "RawPolicy", "RULE_TYPE_ALLOW",
-                        "RULE_TYPE_DENY"];
+                        "RULE_TYPE_DENY", "RULE_TYPE_REDIRECT"];
 
 if (!requestpolicy) {
   var requestpolicy = {
@@ -37,6 +37,7 @@ Components.utils.import("resource://requestpolicy/Logger.jsm",
 // TODO: change these to ints. This is just useful for printing.
 const RULE_TYPE_ALLOW = "RULE_TYPE_ALLOW";
 const RULE_TYPE_DENY = "RULE_TYPE_DENY";
+const RULE_TYPE_REDIRECT = "RULE_TYPE_REDIRECT";
 
 
 function dprint(msg) {
@@ -82,15 +83,15 @@ exampleRawDataObj = {
 function dump(arr,level) {
   var dumped_text = "";
   if(!level) level = 0;
-  
+
   //The padding given at the beginning of the line.
   var level_padding = "";
   for(var j=0;j<level+1;j++) level_padding += "    ";
-  
+
   if(typeof(arr) == 'object') { //Array/Hashes/Objects 
     for(var item in arr) {
       var value = arr[item];
-      
+
       if(typeof(value) == 'object') { //If it is an array,
         dumped_text += level_padding + "'" + item + "' ...\n";
         dumped_text += dump(value,level+1);
@@ -116,6 +117,9 @@ function RawPolicy(jsonData) {
   if (!this._entries["deny"]) {
     this._entries["deny"] = [];
   }
+  if (!this._entries["redirect"]){
+    this._entries["redirect"] = [];
+  }
 }
 
 RawPolicy.prototype = {
@@ -129,9 +133,13 @@ RawPolicy.prototype = {
   getAllowRuleCount : function() {
     return this._entries["allow"].length;
   },
-  
+
   getDenyRuleCount : function() {
     return this._entries["deny"].length;
+  },
+
+  getRedirectRuleCount : function() {
+    return this._entries["redirect"].length;
   },
 
   _addEntryHelper : function(entryPart, policy) {
@@ -142,7 +150,7 @@ RawPolicy.prototype = {
     }
     var r = rules.add(entryPart["s"], entryPart["port"]);
     if (entryPart["pathPre"]) {
-      r.pathPre = entryPart["pathPre"];  
+      r.pathPre = entryPart["pathPre"];
     } else if (entryPart["pathRegex"]) {
       r.pathRegex = new RegExP(entryPart["pathRegex"]);
     }
@@ -165,7 +173,9 @@ RawPolicy.prototype = {
       //r.destinationRuleType = ruleType;
       if (ruleType == RULE_TYPE_ALLOW) {
         r.allowDestination = true;
-      } else {
+      } else if (ruleType == RULE_TYPE_REDIRECT){
+        // TODO: add redirect entry
+      } else{  
         r.denyDestination = true;
       }
 
@@ -174,16 +184,20 @@ RawPolicy.prototype = {
       //r.originRuleType = ruleType;
       if (ruleType == RULE_TYPE_ALLOW) {
         r.allowOrigin = true;
+      } else if (ruleType == RULE_TYPE_REDIRECT){
+        // TODO: add redirect entry
       } else {
         r.denyOrigin = true;
       }
-      
+
     } else if (!o && d) {
       [rules, r] = this._addEntryHelper(d, policy);
       //r.destinationRuleType = ruleType;
       if (ruleType == RULE_TYPE_ALLOW) {
         r.allowDestination = true;
-      } else {
+      } else if (ruleType == RULE_TYPE_REDIRECT){
+        // TODO: add redirect entry
+      } else{
         r.denyDestination = true;
       }
       
@@ -194,7 +208,7 @@ RawPolicy.prototype = {
   },
 
   ruleExists : function(ruleType, ruleData) {
-    var typeStr = {RULE_TYPE_ALLOW:"allow", RULE_TYPE_DENY:"deny"}[ruleType];
+    var typeStr = {RULE_TYPE_ALLOW:"allow", RULE_TYPE_DENY:"deny", RULE_TYPE_REDIRECT:"redirect"}[ruleType];
     if (!typeStr) {
       throw "Invalid ruleType: " + ruleType;
     }
@@ -220,7 +234,7 @@ RawPolicy.prototype = {
   addRule : function(ruleType, ruleData, policy) {
     // XXX: remove loggings
     //dprint("addRule: adding entry");
-    var typeStr = {RULE_TYPE_ALLOW:"allow", RULE_TYPE_DENY:"deny"}[ruleType];
+    var typeStr = {RULE_TYPE_ALLOW:"allow", RULE_TYPE_DENY:"deny", RULE_TYPE_REDIRECT:"redirect"}[ruleType];
     if (!typeStr) {
       throw "Invalid ruleType: " + ruleType;
     }
@@ -292,6 +306,8 @@ RawPolicy.prototype = {
       //dprint("_removeEntryFromPolicy: got rule to alter: " + r.toString());
       if (ruleType == RULE_TYPE_ALLOW) {
         r.allowDestination = null;
+      } else if (ruleType == RULE_TYPE_REDIRECT){
+        // TODO: add redirect entry
       } else if (ruleType == RULE_TYPE_DENY) {
         r.denyDestination = null;
       } else {
@@ -318,6 +334,8 @@ RawPolicy.prototype = {
       // }
       if (ruleType == RULE_TYPE_ALLOW) {
         r.allowOrigin = null;
+      } else if (ruleType == RULE_TYPE_REDIRECT){
+        // TODO: add redirect entry
       } else if (ruleType == RULE_TYPE_DENY) {
         r.denyOrigin = null;
       } else {
@@ -346,7 +364,9 @@ RawPolicy.prototype = {
         r.allowDestination = null;
       } else if (ruleType == RULE_TYPE_DENY) {
         r.denyDestination = null;
-      } else {
+      } else if (ruleType == RULE_TYPE_REDIRECT){
+        // TODO: redirect type remove
+      } else{
         throw "Invalid rule type: " + ruleType;
       }
       
@@ -366,7 +386,7 @@ RawPolicy.prototype = {
   removeRule : function(ruleType, ruleData, policy) {
     // XXX: remove loggings
     //dprint("removeRule: removing entry");
-    var typeStr = {RULE_TYPE_ALLOW:"allow", RULE_TYPE_DENY:"deny"}[ruleType];
+    var typeStr = {RULE_TYPE_ALLOW:"allow", RULE_TYPE_DENY:"deny", RULE_TYPE_REDIRECT:"redirect"}[ruleType];
     if (!typeStr) {
       throw "Invalid ruleType: " + ruleType;
     }
@@ -406,7 +426,7 @@ RawPolicy.prototype = {
 
     for (var typeStr in this._entries) {
       //dprint("typeStr: " + typeStr);
-      if (typeStr != "allow" && typeStr != "deny") {
+      if (typeStr != "allow" && typeStr != "deny" && typeStr !="redirect") {
         dwarn("Invalid entry type: " + typeStr);
         continue;
       }

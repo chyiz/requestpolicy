@@ -180,7 +180,8 @@ PolicyManager.prototype = {
 
   _assertRuleType: function(ruleType) {
     if (ruleType != requestpolicy.mod.RULE_TYPE_ALLOW && 
-        ruleType != requestpolicy.mod.RULE_TYPE_DENY) {
+        ruleType != requestpolicy.mod.RULE_TYPE_DENY && 
+        ruleType != requestpolicy.mod.RULE_TYPE_REDIRECT) {
       throw "Invalid rule type: " + ruleType;
     }
   },
