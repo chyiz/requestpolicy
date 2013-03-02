@@ -405,6 +405,8 @@ requestpolicy.overlay = {
     var notificationButtonAllow = this._strbundle.getString("allow");
     var notificationButtonAllowKey = this._strbundle
         .getString("allow.accesskey");
+    var notificationButtonAlwaysAllow = this._strbundle.getString("alwaysAllowRedirect");
+    var notificationButtonAlwaysAllowKey = this._strbundle.getString("alwaysAllowRedirect.accesskey");
     var notificationButtonDeny = this._strbundle.getString("deny");
     var notificationButtonDenyKey = this._strbundle
         .getString("deny.accesskey");
@@ -451,6 +453,26 @@ requestpolicy.overlay = {
               location.href = redirectTargetUri;
             }
           }, {
+            label : notificationButtonAlwaysAllow,
+            accessKey : notificationButtonAlwaysAllowKey,
+            popup : null,
+            callback : function() {
+              var location = targetDocument.location;
+              // When refreshing a page that wants to redirect, sometimes the
+              // targetDocument.location is null. If that's the case, just use
+              // do the redirection in the current content pane.
+              if (targetDocument.location == null) {
+                requestpolicy.mod.Logger
+                    .dump("in callback: targetDocument.location == null, "
+                        + "using content.location instead");
+                location = content.location;
+              }
+              // Fx 3.7a5+ calls shouldLoad for location.href changes.
+              rpServiceObj.registerAllowedRedirect(location.href,
+                  redirectTargetUri);
+              location.href = redirectTargetUri;
+            }
+          },{
             label : notificationButtonDeny,
             accessKey : notificationButtonDenyKey,
             popup : null,
